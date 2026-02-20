@@ -27,6 +27,16 @@ def mark_built_today():
         f.write(today)
 
 
+# ✅ Home Route (Server Health Check)
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "Server is running",
+        "service": "Option Chain API",
+        "date": datetime.date.today().isoformat()
+    })
+
+
 @app.route("/option-chain", methods=["GET"])
 def get_option_chain():
     segment = request.args.get("segment")
