@@ -15,6 +15,8 @@ FIELDS_TO_KEEP = [
     "UNDERLYING_SECURITY_ID"
 ]
 
+SECURITY_INDEX_FILE = os.path.join(BASE_FOLDER, "security_index.json")
+
 
 def filter_fields(row):
     return {k: row.get(k) for k in FIELDS_TO_KEEP}
@@ -31,22 +33,38 @@ def download_and_build():
 
     grouped = defaultdict(list)
 
+    # 🔥 Security ID index dictionary (FULL ROWS)
+    security_index = {}
+
     for row in reader:
         segment = row.get("SEGMENT")
         exch = row.get("EXCH_ID")
         underlying = row.get("UNDERLYING_SYMBOL", "").upper()
         expiry = row.get("SM_EXPIRY_DATE")
 
+        # 🔥 STORE FULL ROW (NOT filtered)
+        security_id = row.get("SECURITY_ID")
+        if security_id:
+            security_index[security_id] = row  # ✅ full row saved
+
+        # 🔥 Existing Logic (UNCHANGED)
         if exch in ALLOWED_STRUCTURE and underlying in ALLOWED_STRUCTURE[exch]:
             key = (segment, exch, underlying, expiry)
             grouped[key].append(row)
 
-    # Delete old data folder
+    # Delete old data folder (UNCHANGED)
     if os.path.exists(BASE_FOLDER):
         import shutil
         shutil.rmtree(BASE_FOLDER)
 
-    # Build new data
+    # Recreate base folder
+    os.makedirs(BASE_FOLDER, exist_ok=True)
+
+    # 🔥 Save FULL security index
+    with open(SECURITY_INDEX_FILE, "w") as f:
+        json.dump(security_index, f, indent=4)
+
+    # 🔥 Existing Option Chain Build Logic (UNCHANGED)
     for (segment, exch, underlying, expiry), rows in grouped.items():
 
         folder_path = os.path.join(

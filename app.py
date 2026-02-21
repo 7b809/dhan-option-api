@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from downloader import download_and_build
 from utils.file_manager import get_option_file
+from utils.security_lookup import get_security_by_id
 import os
 import datetime
 from config import BASE_FOLDER
@@ -56,6 +57,25 @@ def get_option_chain():
 
     if not data:
         return jsonify({"error": "File not found"}), 404
+
+    return jsonify(data)
+
+@app.route("/security", methods=["GET"])
+def get_security():
+    security_id = request.args.get("security_id")
+
+    if not security_id:
+        return jsonify({"error": "security_id is required"}), 400
+
+    # 🔥 Rebuild once per day
+    if needs_rebuild():
+        download_and_build()
+        mark_built_today()
+
+    data = get_security_by_id(security_id)
+
+    if not data:
+        return jsonify({"error": "Security ID not found"}), 404
 
     return jsonify(data)
 
