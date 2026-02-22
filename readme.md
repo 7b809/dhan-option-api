@@ -1,167 +1,140 @@
-Option Chain API
+🚀 DHAN Option API Documentation
 
-A Flask-based backend service that:
+Base URL (Local):
 
-Downloads instrument data
-
-Builds daily JSON option-chain files
-
-Serves filtered option-chain data via REST API
-
-Rebuilds data automatically once per day
-
-Project Structure
-project/
-│
-├── app.py
-├── downloader.py
-├── config.py
-├── last_build.txt
-│
-├── utils/
-│   └── file_manager.py
-│
-└── data/
-How It Works
-1️⃣ Daily Rebuild Logic
-
-The system checks if data was built today.
-
-If not built → runs download_and_build()
-
-If already built today → skips rebuild
-
-Stores last build date inside last_build.txt
-
-Functions Responsible
-needs_rebuild()
-mark_built_today()
-2️⃣ Home Route
-Endpoint
+http://127.0.0.1:5000
+1️⃣ Health Check Route
+🔹 Endpoint
 GET /
-Purpose
+🔹 Purpose
 
-Health check route to confirm server is running.
+Checks if server is running.
 
-Sample Response
+🔹 Sample URL
+http://127.0.0.1:5000/
+🔹 Sample Response
 {
   "status": "Server is running",
   "service": "Option Chain API",
-  "date": "2026-02-21"
+  "date": "2026-02-22"
 }
-3️⃣ Option Chain Route
-Endpoint
+2️⃣ Option Chain Route
+🔹 Endpoint
 GET /option-chain
-Required Query Parameters
-Parameter	Description
-segment	Market segment
-exchange	Exchange name
-symbol	Underlying symbol
-expiry	Expiry date
-Example Request
-http://127.0.0.1:5000/option-chain?segment=FO&exchange=NSE&symbol=NIFTY&expiry=2026-02-26
-Success Response (Sample)
+🔹 Required Query Parameters
+Parameter	Example	Description
+segment	D	Segment type
+exchange	NSE	Exchange ID
+symbol	NIFTY	Underlying symbol
+expiry	2026-02-24	Expiry date (YYYY-MM-DD)
+🔹 Sample URL
+http://127.0.0.1:5000/option-chain?segment=D&exchange=NSE&symbol=NIFTY&expiry=2026-02-24
+🔹 Sample Response
 {
-  "symbol": "NIFTY",
-  "expiry": "2026-02-26",
-  "data": [
+  "25500.00000": [
     {
-      "strike": 22000,
-      "call_oi": 152340,
-      "put_oi": 130220
+      "SYMBOL_NAME": "NIFTY-Feb2026-25500-CE",
+      "DISPLAY_NAME": "NIFTY 24 FEB 25500 CALL",
+      "SECURITY_ID": "64854",
+      "ISIN": "NA",
+      "INSTRUMENT": "OPTIDX",
+      "UNDERLYING_SECURITY_ID": "26000"
     },
     {
-      "strike": 22100,
-      "call_oi": 142100,
-      "put_oi": 155980
+      "SYMBOL_NAME": "NIFTY-Feb2026-25500-PE",
+      "DISPLAY_NAME": "NIFTY 24 FEB 25500 PUT",
+      "SECURITY_ID": "64853",
+      "ISIN": "NA",
+      "INSTRUMENT": "OPTIDX",
+      "UNDERLYING_SECURITY_ID": "26000"
     }
   ]
 }
-Error Responses
-Missing Parameters
+3️⃣ Security Lookup by Security ID
+🔹 Endpoint
+GET /security
+🔹 Required Query Parameter
+Parameter	Example
+security_id	64872
+🔹 Sample URL
+http://127.0.0.1:5000/security?security_id=64872
+🔹 Sample Response
 {
-  "error": "Missing parameters"
+  "EXCH_ID": "NSE",
+  "SEGMENT": "D",
+  "SECURITY_ID": "64872",
+  "SYMBOL_NAME": "NIFTY-Feb2026-25600-CE",
+  "DISPLAY_NAME": "NIFTY 24 FEB 25600 CALL",
+  "STRIKE_PRICE": "25600.00000",
+  "OPTION_TYPE": "CE",
+  "SM_EXPIRY_DATE": "2026-02-24",
+  ...
 }
 
-HTTP Status Code: 400
+If not found:
 
-File Not Found
 {
-  "error": "File not found"
+  "error": "Security ID not found"
+}
+4️⃣ Contract Lookup (Smart Search)
+🔹 Endpoint
+GET /contract-lookup
+🔹 Required Query Parameters
+Parameter	Example	Description
+symbol	NIFTY	Underlying
+expiry	24FEB2026	Expiry (Flexible format)
+strike	25500	Strike Price
+type	CALL	CALL / PUT
+🔹 Supported Expiry Formats
+
+✔ 24FEB2026
+✔ 24 FEB 2026
+
+Backend automatically converts to:
+
+2026-02-24
+🔹 Sample URL
+http://127.0.0.1:5000/contract-lookup?symbol=NIFTY&expiry=24FEB2026&strike=25500&type=CALL
+🔹 Sample Response
+{
+  "EXCH_ID": "NSE",
+  "SEGMENT": "D",
+  "SECURITY_ID": "64854",
+  "SYMBOL_NAME": "NIFTY-Feb2026-25500-CE",
+  "DISPLAY_NAME": "NIFTY 24 FEB 25500 CALL",
+  "STRIKE_PRICE": "25500.00000",
+  "OPTION_TYPE": "CE",
+  "SM_EXPIRY_DATE": "2026-02-24",
+  ...
 }
 
-HTTP Status Code: 404
+If not found:
 
-Rebuild Flow
-Client Request
-      ↓
-Check last_build.txt
-      ↓
-If not today's date:
-      ↓
-Run download_and_build()
-      ↓
-Save today's date
-      ↓
-Serve JSON file
-How To Run
-1️⃣ Install Dependencies
-pip install flask
-2️⃣ Run Application
-python app.py
-3️⃣ Open in Browser
+{
+  "error": "No matching contract found"
+}
+🔥 Automatic Rebuild Logic
 
-Health Check:
+Your API automatically:
 
-http://127.0.0.1:5000/
+Checks last_build.txt
 
-Option Chain:
+If today’s data not built → runs download_and_build()
 
-http://127.0.0.1:5000/option-chain?segment=FO&exchange=NSE&symbol=NIFTY&expiry=2026-02-26
-Production Recommendation
+Ensures fresh master file daily
 
-Instead of:
+Builds:
 
-app.run(debug=True)
+security_index.json
 
-Use:
+option chain folders
 
-gunicorn app:app
+This happens automatically on any route call.
 
-Or deploy via:
-
-Docker
-
-Nginx + Gunicorn
-
-Cloud VM (AWS / DigitalOcean / GCP)
-
-Future Improvements
-
-Add logging
-
-Add rebuild time tracking
-
-Add API key authentication
-
-Add caching (Redis)
-
-Add expiry listing endpoint
-
-Add instruments listing endpoint
-
-Add auto-scheduled rebuild (cron at 9:00 AM)
-
-Summary
-
-This API:
-
-Builds option-chain files once per day
-
-Serves JSON via REST
-
-Automatically manages rebuild logic
-
-Returns structured error handling
-
-Designed for scalable trading backend systems
+🧠 Summary of All Routes
+| Route              | Purpose                    |
+| ------------------ | -------------------------- |
+| `/`                | Health check               |
+| `/option-chain`    | Get full option chain      |
+| `/security`        | Lookup by Security ID      |
+| `/contract-lookup` | Lookup by contract details |
