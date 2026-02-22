@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify
 from downloader import download_and_build
 from utils.file_manager import get_option_file
 from utils.security_lookup import get_security_by_id
+from utils.security_lookup import find_security_by_contract
+
 import os
 import datetime
 from config import BASE_FOLDER
+
 
 app = Flask(__name__)
 
@@ -78,6 +81,27 @@ def get_security():
         return jsonify({"error": "Security ID not found"}), 404
 
     return jsonify(data)
+
+@app.route("/contract-lookup", methods=["GET"])
+def contract_lookup():
+    symbol = request.args.get("symbol")
+    expiry = request.args.get("expiry")  # Format: 24 FEB 2026
+    strike = request.args.get("strike")
+    option_type = request.args.get("type")  # CALL / PUT
+
+    if not all([symbol, expiry, strike, option_type]):
+        return jsonify({"error": "Missing parameters"}), 400
+
+    if needs_rebuild():
+        download_and_build()
+        mark_built_today()
+
+    result = find_security_by_contract(symbol, expiry, strike, option_type)
+
+    if not result:
+        return jsonify({"error": "No matching contract found"}), 404
+
+    return jsonify(result)
 
 
 if __name__ == "__main__":
