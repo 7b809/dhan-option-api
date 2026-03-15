@@ -52,6 +52,7 @@ def home():
     return jsonify({
         "status": "Server is running",
         "service": "Option Chain API",
+        "sample":"/option-chain?segment=FNO&exchange=NSE&symbol=NIFTY&expiry=2026-03-17",
         "date": datetime.date.today().isoformat()
     })
 
