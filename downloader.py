@@ -3,7 +3,7 @@ import csv
 import os
 import json
 from collections import defaultdict
-from config import GITHUB_JSON_URL, BASE_FOLDER, ALLOWED_STRUCTURE, DHAN_URL
+from config import BASE_FOLDER, ALLOWED_STRUCTURE, DHAN_URL
 
 
 FIELDS_TO_KEEP = [
@@ -17,56 +17,19 @@ FIELDS_TO_KEEP = [
 
 SECURITY_INDEX_FILE = os.path.join(BASE_FOLDER, "security_index.json")
 
-# 🔥 NEW: Toggle mode
-USE_GITHUB = True
-
-# 🔥 NEW: GitHub JSON URL (use your file)
-
 
 def filter_fields(row):
     return {k: row.get(k) for k in FIELDS_TO_KEEP}
 
 
-# 🔥 NEW: Load JSON from GitHub
-def load_from_github_json(url):
-    print("[INFO] Loading data from GitHub JSON...")
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-
-
 def download_and_build():
     print("[INFO] Downloading master file...")
 
-    # 🔥 INPUT SOURCE SWITCH
-    if USE_GITHUB:
-        raw_rows = load_from_github_json(GITHUB_JSON_URL)
+    response = requests.get(DHAN_URL)
+    response.raise_for_status()
 
-        # 🔥 MAP JSON → CSV FORMAT (IMPORTANT)
-        reader = []
-        for r in raw_rows:
-            mapped = {
-                "SEGMENT": r.get("segment"),
-                "EXCH_ID": "NSE",  # default assumption
-                "UNDERLYING_SYMBOL": "NIFTY",  # since using nifty.json
-                "SM_EXPIRY_DATE": r.get("expiry"),
-                "STRIKE_PRICE": r.get("strike"),
-                "OPTION_TYPE": r.get("optionType"),
-                "SECURITY_ID": r.get("id"),
-                "SYMBOL_NAME": r.get("symbol"),
-                "DISPLAY_NAME": r.get("symbol"),
-                "INSTRUMENT": r.get("instrument"),
-                "ISIN": None,
-                "UNDERLYING_SECURITY_ID": None
-            }
-            reader.append(mapped)
-
-    else:
-        response = requests.get(DHAN_URL)
-        response.raise_for_status()
-
-        decoded = response.content.decode("utf-8").splitlines()
-        reader = csv.DictReader(decoded)
+    decoded = response.content.decode("utf-8").splitlines()
+    reader = csv.DictReader(decoded)
 
     grouped = defaultdict(list)
 
@@ -139,8 +102,9 @@ def download_and_build():
             with open(file_path, "w") as f:
                 json.dump(cleaned, f)
 
-        # 🔥 OTHER SEGMENTS (UNCHANGED)
+        # 🔥 NEW: Save other segments (NO CHANGE to existing logic)
         else:
+
             cleaned = [filter_fields(row) for row in rows]
 
             with open(file_path, "w") as f:
