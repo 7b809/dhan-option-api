@@ -18,3 +18,5 @@ ALLOWED_STRUCTURE = {
 }
 
 DHAN_URL = "https://images.dhan.co/api-data/api-scrip-master-detailed.csv"
+
+GITHUB_JSON_URL = os.getenv("GITHUB_JSON_URL")
